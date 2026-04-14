@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>複利シミュレーター</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: #f5f5f0;
+      color: #1a1a1a;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      border: 0.5px solid rgba(0,0,0,0.1);
+      padding: 2rem;
+      width: 100%;
+      max-width: 640px;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 500;
+      margin-bottom: 1.5rem;
+      color: #1a1a1a;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 1.5rem;
+    }
+
+    .metric {
+      background: #f5f5f0;
+      border-radius: 8px;
+      padding: 0.85rem;
+    }
+
+    .metric-label {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 4px;
+    }
+
+    .metric-value {
+      font-size: 18px;
+      font-weight: 500;
+      color: #1a1a1a;
+      word-break: break-all;
+    }
+
+    .metric-value.green { color: #16a34a; }
+
+    .field { margin-bottom: 1.1rem; }
+
+    label {
+      display: block;
+      font-size: 14px;
+      color: #555;
+      margin-bottom: 6px;
+    }
+
+    .input-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .input-prefix {
+      font-size: 14px;
+      color: #555;
+    }
+
+    input[type="number"] {
+      width: 180px;
+      height: 36px;
+      border: 0.5px solid rgba(0,0,0,0.25);
+      border-radius: 8px;
+      padding: 0 10px;
+      font-size: 14px;
+      color: #1a1a1a;
+      background: #fff;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input[type="number"]:focus {
+      border-color: rgba(0,0,0,0.5);
+      box-shadow: 0 0 0 3px rgba(0,0,0,0.06);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 4px;
+      accent-color: #1a1a1a;
+      cursor: pointer;
+    }
+
+    .rate-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .rate-value {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .fund-btns {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .fund-btn {
+      font-size: 12px;
+      padding: 5px 10px;
+      border-radius: 8px;
+      background: #f5f5f0;
+      color: #555;
+      border: 0.5px solid rgba(0,0,0,0.15);
+      cursor: pointer;
+      line-height: 1.4;
+      text-align: left;
+      transition: background 0.12s, border-color 0.12s;
+    }
+
+    .fund-btn:hover { background: #ebebeb; }
+
+    .fund-btn.active {
+      background: #e8f0fe;
+      border: 1px solid #4285f4;
+      color: #1a56db;
+    }
+
+    .fund-btn .btn-name {
+      display: block;
+      font-weight: 500;
+      color: #1a1a1a;
+    }
+
+    .fund-btn.active .btn-name { color: #1a56db; }
+
+    .fund-btn .btn-rate { font-size: 11px; color: #777; }
+    .fund-btn.active .btn-rate { color: #4285f4; }
+
+    .legend {
+      display: flex;
+      gap: 16px;
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 10px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      display: inline-block;
+    }
+
+    .chart-wrap {
+      position: relative;
+      width: 100%;
+      height: 280px;
+      margin-bottom: 1rem;
+    }
+
+    .note {
+      background: #f5f5f0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: #888;
+      line-height: 1.6;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      body { background: #111; color: #eee; }
+      .card { background: #1c1c1e; border-color: rgba(255,255,255,0.1); }
+      h1, .metric-value { color: #eee; }
+      .metric { background: #2c2c2e; }
+      .metric-label, label, .input-prefix { color: #aaa; }
+      input[type="number"] { background: #2c2c2e; border-color: rgba(255,255,255,0.2); color: #eee; }
+      input[type="number"]:focus { border-color: rgba(255,255,255,0.5); box-shadow: 0 0 0 3px rgba(255,255,255,0.06); }
+      input[type="range"] { accent-color: #aaa; }
+      .fund-btn { background: #2c2c2e; border-color: rgba(255,255,255,0.12); color: #aaa; }
+      .fund-btn:hover { background: #3a3a3c; }
+      .fund-btn .btn-name { color: #eee; }
+      .fund-btn .btn-rate { color: #888; }
+      .fund-btn.active { background: #1a2e4a; border-color: #4285f4; }
+      .fund-btn.active .btn-name { color: #82b4ff; }
+      .fund-btn.active .btn-rate { color: #6aa0ff; }
+      .legend { color: #aaa; }
+      .note { background: #2c2c2e; color: #888; }
+      .rate-value { color: #eee; }
+    }
+
+    @media (max-width: 480px) {
+      .card { padding: 1.25rem; }
+      .metrics { grid-template-columns: 1fr; }
+      .metric-value { font-size: 20px; }
+      input[type="number"] { width: 140px; }
+    }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>複利シミュレーター</h1>
+
+  <div class="metrics">
+    <div class="metric">
+      <div class="metric-label">最終資産</div>
+      <div class="metric-value" id="final-value">¥0</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">総投資額</div>
+      <div class="metric-value" id="total-invested">¥0</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">利益合計</div>
+      <div class="metric-value green" id="interest-total">¥0</div>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>初期投資額（一括）</label>
+    <div class="input-row">
+      <span class="input-prefix">¥</span>
+      <input type="number" id="principal-input" min="0" max="100000000" step="10000" value="1000000" oninput="syncFromInput('principal')" />
+    </div>
+    <input type="range" min="0" max="100000000" step="100000" value="1000000" id="principal" oninput="syncFromSlider('principal')" />
+  </div>
+
+  <div class="field">
+    <label>毎月の積立額</label>
+    <div class="input-row">
+      <span class="input-prefix">¥</span>
+      <input type="number" id="monthly-input" min="0" max="1000000" step="1000" value="30000" oninput="syncFromInput('monthly')" />
+    </div>
+    <input type="range" min="0" max="1000000" step="1000" value="30000" id="monthly" oninput="syncFromSlider('monthly')" />
+  </div>
+
+  <div class="field">
+    <div class="rate-row">
+      <label style="margin:0;">年利率</label>
+      <span class="rate-value" id="rate-out">5.00%</span>
+    </div>
+    <input type="range" min="0.1" max="40" step="0.1" value="5" id="rate" oninput="onRateSlider()" style="margin-top:8px;" />
+    <div class="fund-btns">
+      <button class="fund-btn" onclick="setRate(20.52, this)">
+        <span class="btn-name">オルカン</span>
+        <span class="btn-rate">直近5年 20.52%</span>
+      </button>
+      <button class="fund-btn" onclick="setRate(22.93, this)">
+        <span class="btn-name">S&amp;P500</span>
+        <span class="btn-rate">直近5年 22.93%</span>
+      </button>
+      <button class="fund-btn" onclick="setRate(24.93, this)">
+        <span class="btn-name">FANG+</span>
+        <span class="btn-rate">直近5年 24.93%</span>
+      </button>
+      <button class="fund-btn" onclick="setRate(7, this)">
+        <span class="btn-name">世界株式</span>
+        <span class="btn-rate">長期平均 7%</span>
+      </button>
+      <button class="fund-btn" onclick="setRate(3, this)">
+        <span class="btn-name">保守的</span>
+        <span class="btn-rate">年率 3%</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="field">
+    <div class="rate-row">
+      <label style="margin:0;">運用期間</label>
+      <span class="rate-value" id="years-out">20年</span>
+    </div>
+    <input type="range" min="1" max="50" step="1" value="20" id="years" oninput="compute()" style="margin-top:8px;" />
+  </div>
+
+  <div class="legend">
+    <span class="legend-item"><span class="legend-dot" style="background:#3b82f6;"></span>初期投資</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#818cf8;"></span>積立元本</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#22c55e;"></span>複利利益</span>
+  </div>
+
+  <div class="chart-wrap">
+    <canvas id="chart"></canvas>
+  </div>
+
+  <div class="note">
+    ※ 各ファンドの直近5年年率リターン（eMAXIS Slim 各ファンド・iFreeNEXT FANG+、2026年2月末時点、円ベース）。過去の実績であり将来を保証するものではありません。
+  </div>
+</div>
+
+<script>
+  let chart;
+
+  function fmt(n) {
+    const abs = Math.abs(n);
+    if (abs >= 100000000) return '¥' + (n / 100000000).toFixed(2) + '億';
+    if (abs >= 10000) return '¥' + Math.round(n / 10000).toLocaleString('ja-JP') + '万';
+    return '¥' + Math.round(n).toLocaleString('ja-JP');
+  }
+
+  function clamp(val, min, max) { return Math.min(Math.max(val, min), max); }
+
+  function syncFromSlider(id) {
+    document.getElementById(id + '-input').value = document.getElementById(id).value;
+    compute();
+  }
+
+  function syncFromInput(id) {
+    const input = document.getElementById(id + '-input');
+    const slider = document.getElementById(id);
+    const val = clamp(parseInt(input.value) || 0, parseInt(slider.min), parseInt(slider.max));
+    slider.value = val;
+    compute();
+  }
+
+  function highlightBtn(btn) {
+    document.querySelectorAll('.fund-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  function setRate(val, btn) {
+    document.getElementById('rate').value = val;
+    highlightBtn(btn);
+    compute();
+  }
+
+  function onRateSlider() {
+    document.querySelectorAll('.fund-btn').forEach(b => b.classList.remove('active'));
+    compute();
+  }
+
+  function compute() {
+    const P = parseInt(document.getElementById('principal').value) || 0;
+    const M = parseInt(document.getElementById('monthly').value) || 0;
+    const annualRate = parseFloat(document.getElementById('rate').value);
+    const r = annualRate / 100 / 12;
+    const Y = parseInt(document.getElementById('years').value);
+
+    document.getElementById('rate-out').textContent = annualRate.toFixed(2) + '%';
+    document.getElementById('years-out').textContent = Y + '年';
+
+    const labels = [], initialData = [], monthlyData = [], interestData = [];
+
+    for (let y = 0; y <= Y; y++) {
+      const months = y * 12;
+      const ig = P * Math.pow(1 + r, months);
+      const mg = r > 0 ? M * (Math.pow(1 + r, months) - 1) / r : M * months;
+      const total = ig + mg;
+      const invested = P + M * months;
+      labels.push(y + '年');
+      initialData.push(Math.round(P));
+      monthlyData.push(Math.round(M * months));
+      interestData.push(Math.round(total - invested));
+    }
+
+    const tm = Y * 12;
+    const ft = P * Math.pow(1 + r, tm) + (r > 0 ? M * (Math.pow(1 + r, tm) - 1) / r : M * tm);
+    const ti = P + M * tm;
+    document.getElementById('final-value').textContent = fmt(ft);
+    document.getElementById('total-invested').textContent = fmt(ti);
+    document.getElementById('interest-total').textContent = fmt(ft - ti);
+
+    if (chart) {
+      chart.data.labels = labels;
+      chart.data.datasets[0].data = initialData;
+      chart.data.datasets[1].data = monthlyData;
+      chart.data.datasets[2].data = interestData;
+      chart.update();
+    } else {
+      chart = new Chart(document.getElementById('chart'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label: '初期投資', data: initialData, backgroundColor: '#3b82f6', stack: 'stack', borderRadius: 0 },
+            { label: '積立元本', data: monthlyData, backgroundColor: '#818cf8', stack: 'stack', borderRadius: 0 },
+            { label: '複利利益', data: interestData, backgroundColor: '#22c55e', stack: 'stack', borderRadius: 2 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              stacked: true,
+              ticks: { autoSkip: true, maxTicksLimit: 11, color: '#888', font: { size: 11 } },
+              grid: { display: false }
+            },
+            y: {
+              stacked: true,
+              ticks: {
+                callback: v => {
+                  if (v >= 100000000) return (v / 100000000).toFixed(1) + '億';
+                  if (v >= 10000) return (v / 10000).toFixed(0) + '万';
+                  return v;
+                },
+                color: '#888', font: { size: 11 }
+              },
+              grid: { color: 'rgba(128,128,128,0.12)' }
+            }
+          }
+        }
+      });
+    }
+  }
+
+  compute();
+</script>
+</body>
+</html>
